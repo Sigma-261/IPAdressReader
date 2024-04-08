@@ -8,5 +8,8 @@ namespace IPAdressReader;
 
 public class Sevices
 {
+    public void Test(string ipAdd)
+    {
 
+    }
 }
