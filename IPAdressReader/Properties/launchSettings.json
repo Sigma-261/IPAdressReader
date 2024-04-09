@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "IPAdressReader": {
+      "commandName": "Project",
+      "commandLineArgs": "\r\n--file-log D:\\\\Desktop\\\\test.log\r\n--file-output D:\\\\Desktop\\\\result.txt\r\n--address-start 255.255.255.255\r\n--address-mask 21\r\n--time-start 23.01.2023\r\n--time-end 23.01.2024"
+    }
+  }
+}

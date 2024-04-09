@@ -1,109 +1,123 @@
-﻿
-using System.Net;
+﻿using System.Net;
 using System.Text.RegularExpressions;
-using System.Windows.Input;
-using System.Xml.Serialization;
-using NetTools;
+using IPAdressReader;
+using Mono.Options;
+using Newtonsoft.Json;
 
-string command;
-bool quitNow = false;
+FilterSettings filterSettings = new();
 
-while (!quitNow)
+OptionSet options = new OptionSet() {
+            { "file-json=", "Путь к файлу конфигурации",
+              path => filterSettings = ReadJsonFile(path) },
+            { "file-log=", "Путь к файлу с логами",
+              path => filterSettings.PathIn = CheckPath(path) },
+            { "file-output=", "Путь к файлу с результатом",
+              path => filterSettings.PathOut = CheckPath(path) },
+            { "address-start=", "Нижняя граница диапазона адресов, по умолчанию обрабатываются все адреса, необязательный параметр",
+              ip => filterSettings.Ip = ConvertIp(ip) },
+            { "address-mask=", "Маска подсети, задающая верхнюю границу диапазона десятичное число, необязательный параметр",
+              mask => filterSettings.Mask = ConvertMask(mask)},
+            { "time-start=", "Нижняя граница временного интервала",
+              date => filterSettings.TimeStart = ConvertDate(date) },
+            { "time-end=", "Верхняя граница временного интервала",
+              date => filterSettings.TimeEnd = ConvertDate(date) },
+        };
+
+try
 {
-    command = Console.ReadLine();
-    switch (command)
+    options.Parse(args);
+}
+catch (OptionException e)
+{
+    Console.WriteLine($"Ошибка: {e.Message}");
+    Console.WriteLine($"Параметр: {e.OptionName}");
+    return;
+}
+
+try
+{
+    Services.WriteIpAddresses(filterSettings);
+}
+catch(OptionException e)
+{
+    Console.WriteLine($"Ошибка: {e.Message}");
+}
+
+string CheckPath(string path)
+{
+    if (path == "")
+        throw new OptionException("Пустой путь!", "file-log или file-output");
+    try
     {
-        case "--file-log":
-            Console.WriteLine("путь к файлу с логами");
-            TestReadFile("D:\\Desktop\\test.log");
-            break;
-
-        case "--file-output":
-            Console.WriteLine("путь к файлу с результатом");
-            TestWriteFile("path");
-            break;
-
-        case "--address-start":
-            Console.WriteLine("нижняя граница диапазона адресов, по умолчанию обрабатываются все адреса, необязательный параметр");
-            TestIp("0.255.255.255");
-            break;
-
-        case "--address-mask":
-            Console.WriteLine("маска подсети, задающая верхнюю границу диапазона десятичное число, необязательный параметр");
-            TestMask("1");
-            break;
-
-        case "--time-start":
-            Console.WriteLine("нижняя граница временного интервала");
-            TestDateTime("12.12.2024");
-            break;
-
-        case "--time-end":
-            Console.WriteLine("верхняя граница временного интервала");
-            TestDateTime("12.12.2024");
-            break;
-
-        case "--help":
-            Console.WriteLine(
-                "--file-log - путь к файлу с логами\n" +
-                "--file-output - путь к файлу с результатом\n" +
-                "--address-start - нижняя граница диапазона адресов, по умолчанию обрабатываются все адреса, необязательный параметр\n" +
-                "--address-mask - маска подсети, задающая верхнюю границу диапазона десятичное число, необязательный параметр\n" +
-                "--time-start - нижняя граница временного интервала\n" +
-                "--time-end - верхняя граница временного интервала\n" +
-                "--quit - завершение работы");
-            break;
-
-        case "--quit":
-            quitNow = true;
-            break;
-
-        default:
-            Console.WriteLine($"Unknown Command {command}");
-            break;
+        File.ReadAllText(path);
+        return path;
     }
-}
-
-void TestReadFile(string path)
-{
-    var results = File.ReadLines(path);
-}
-
-void TestWriteFile(string path)
-{
+    catch (Exception e)
+    {
+        throw new OptionException(e.Message, "file-log или file-output");
+    }
 
 }
 
-//DONE
-IPAddress? TestIp(string ipAdd)
+IPAddress? ConvertIp(string ipAdd)
 {
+    if(ipAdd == "")
+        return null;
+
     Regex regex = new Regex(@"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$");
+
     if (!regex.IsMatch(ipAdd))
-        Console.WriteLine("NONE");
+        throw new OptionException("Некорректный ip адрес! Формат: 255.255.255.255", "address-start");
 
-    IPAddress ip = IPAddress.Parse(ipAdd);
-
-
-
-    return ip;
+    return IPAddress.Parse(ipAdd);
 }
 
-//DONE
-void TestMask(string mask)
+int? ConvertMask(string mask)
 {
+    if (mask == "")
+        return null;
+
     int value = int.Parse(mask);
     if (value < 0 || value > 32)
-        Console.WriteLine("NONE");
-    //var rangeA = IPAddressRange.Parse("192.168.0.0/33");
-    //bool t = rangeA.Contains(IPAddress.Parse("192.168.0.34"));
-    //bool f = rangeA.Contains(IPAddress.Parse("192.168.10.1"));
+        throw new OptionException("Некорректный формат маски! Формат: целое положительное десятичное число, не больше 32", "address-mask");
+    //if(ip is null)
+    //    throw new OptionException("Параметр нельзя использовать, если не задан address-start!", "address-mask");
+
+    return value;
 }
 
-//DONE
-DateTime? TestDateTime(string date)
+DateTime? ConvertDate(string date)
 {
+    if (date == "")
+        return null;
+
     Regex regex = new Regex(@"^(3[01]|[12][0-9]|0?[1-9])(\.)(1[0-2]|0?[1-9])\2([0-9]{2})?[0-9]{2}$");
     if (!regex.IsMatch(date))
-        Console.WriteLine("NONE");
+        throw new OptionException("Некорректный формат даты! Формат: дд.ММ.гггг", "time-start или time-end");
+
     return DateTime.Parse(date);
+}
+
+FilterSettings ReadJsonFile(string path)
+{
+    try
+    {
+        using StreamReader reader = new(CheckPath(path));
+        var json = reader.ReadToEnd();
+        Dictionary<string, string> settings = JsonConvert.DeserializeObject<Dictionary<string, string>>(json)!;
+
+        return new FilterSettings()
+        {
+            PathIn = CheckPath(settings["pathIn"]),
+            PathOut = CheckPath(settings["pathOut"]),
+            Ip = ConvertIp(settings["ip"]),
+            Mask = ConvertMask(settings["mask"]),
+            TimeStart = ConvertDate(settings["timeStart"]),
+            TimeEnd = ConvertDate(settings["timeEnd"]),
+        };
+    }
+    catch (Exception e)
+    {
+        throw new OptionException(e.Message, "file-json");
+    }
 }

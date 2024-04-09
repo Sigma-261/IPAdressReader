@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="IPAddressRange" Version="6.0.0" />
+    <PackageReference Include="Mono.Options" Version="6.12.0.148" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
 </Project>
