@@ -31,7 +31,7 @@ public static class Services
             throw new OptionException("Файл пустой или не подходит для обработки","");
         }
 
-        if (filterSetting.TimeStart is not null && filterSetting.TimeEnd is not null)
+        if (filterSetting.TimeStart is not null || filterSetting.TimeEnd is not null)
         {
             lines = lines.Where(x => DateTime.Parse(regexDate.Match(x).Value) >= filterSetting.TimeStart && DateTime.Parse(regexDate.Match(x).Value) <= filterSetting.TimeEnd);
         }  
